@@ -1,0 +1,19 @@
+{
+  "name": "cilantro-js",
+  "version": "1.0.0",
+  "description": "Javascript Implementation of a Cilantro Wallet",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lamden/cilantro-js.git"
+  },
+  "author": "Colin McGrath",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Lamden/cilantro-js/issues"
+  },
+  "homepage": "https://github.com/Lamden/cilantro-js#readme"
+}
