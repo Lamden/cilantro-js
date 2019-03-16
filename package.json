@@ -4,7 +4,8 @@
   "description": "Javascript Implementation of a Cilantro Wallet",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "make test",
+    "build": "make build"
   },
   "repository": {
     "type": "git",
@@ -15,5 +16,18 @@
   "bugs": {
     "url": "https://github.com/Lamden/cilantro-js/issues"
   },
-  "homepage": "https://github.com/Lamden/cilantro-js#readme"
+  "homepage": "https://github.com/Lamden/cilantro-js#readme",
+  "dependencies": {
+    "@types/jest": "^24.0.11",
+    "assert": "^1.4.1",
+    "big-integer": "^1.6.42",
+    "capnp-ts": "^0.4.0",
+    "jssha": "^2.3.1",
+    "md5": "^2.2.1",
+    "tweetnacl": "^1.0.1"
+  },
+  "devDependencies": {
+    "capnpc-ts": "^0.4.0",
+    "mocha": "^6.0.2"
+  }
 }

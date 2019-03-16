@@ -4,6 +4,7 @@ import * as capnp from 'capnp-ts';
 import * as md5 from 'md5';
 import * as bigInt from 'big-integer';
 import * as transactionSchemas from './transaction.capnp';
+import * as valueSchemas from './values.capnp';
 import * as helpers from './helpers';
 import * as wallet from './wallet';
 import * as pow from './pow';
@@ -12,21 +13,21 @@ var ContractTransaction = transactionSchemas.ContractTransaction;
 var TransactionContainer = transactionSchemas.TransactionContainer;
 var Metadata = transactionSchemas.MetaData;
 var ContractPayload = transactionSchemas.ContractPayload;
-var Kwargs = transactionSchemas.Kwargs;
-var Value = transactionSchemas.Value;
-var Map = transactionSchemas.Map;
+var Kwargs = valueSchemas.Kwargs;
+var Value = valueSchemas.Value;
+var Map = valueSchemas.Map;
 
-export class CurrencyTransactionContainer {
+export class ContractTransactionContainer {
     tx: capnp.Message;
 
     constructor() {
     }
 
-    create(currencyTransaction) {
+    create(contractTransaction) {
         const struct = new capnp.Message()
         const txContainer = struct.initRoot(TransactionContainer);
 
-        const txbytes = new Uint8Array(currencyTransaction.toPackedArrayBuffer());
+        const txbytes = new Uint8Array(contractTransaction.toPackedArrayBuffer());
         const pl = txContainer.initPayload(txbytes.byteLength);
         pl.copyBuffer(txbytes);
 
@@ -57,34 +58,32 @@ export class CurrencyTransactionContainer {
     }
 }
 
-export class CurrencyContractTransaction {
+export class ContractTransaction {
     sender_sk: string;
     sender: string;
     stamps_supplied: number;
     nonce: string;
-    to: string;
     contract_name: string;
     func_name: string;
     signature: string;
     pow: string;
-    amount: number;
     tx: capnp.Message;
 
-    constructor(contract_name='currency', func_name='transfer') {
+    constructor(contract_name, func_name) {
         this.contract_name = contract_name;
         this.func_name = func_name;
     }
 
     // PSUEDO-CONSTRUCTOR
-    create(sender_sk, stamps_supplied, nonce, to, amount) {
+    //   kwargs is reference to a dictionary object emulating the usage of kwargs in python for unknown, dynamic
+    //          keyword argument assignment
+    create(sender_sk, stamps_supplied, nonce, kwargobj) {
         // Fill the class objects for later use
         // These are initialized here instead of in the constructor so we can emulate having multiple
         // constructors (as with in python @class_method)
         this.sender_sk = sender_sk;
         this.stamps_supplied = stamps_supplied;
         this.nonce = nonce;
-        this.to = to;
-        this.amount = amount;
 
         // Initialize capnp objects
         const struct = new capnp.Message();
@@ -97,7 +96,9 @@ export class CurrencyContractTransaction {
                                                  // it over
         const valuebuf = valuebuffer.initRoot(Value);
         const kwargs = payload.initKwargs();
-        const entries = kwargs.initEntries(2); // Set to static length of 2 for currency contract
+        const kwargcount = Object.keys(kwargobj).length; // Get the number of kwargs supplied via the kwarg object for
+                                                         // the dynamic section of the transaction container
+        const entries = kwargs.initEntries(kwargcount); // Set to static length of 2 for currency contract
 
         // Cast required inputs to capnp types
         const stamps = capnp.Uint64.fromNumber(this.stamps_supplied);
@@ -110,6 +111,40 @@ export class CurrencyContractTransaction {
         payload.setStampsSupplied(stamps);
 
         // Build the non-deterministic section of the payload (kwargs)
+        Object.entries(kwargobj).forEach(function (value, i) {
+            // Set the key to the entry (foreach on on object will give [ [ <key>, <value> ], ... ]
+            entries.get(i).setKey(value[0]);
+            // Set the value based on the provided type
+            switch (value[1]["type"]) {
+                default:
+                    throw "argument type " + value[1]["type"] + " is either unknown or unsupported by cilantro-js";
+                case 'bool':
+                    if (typeof value[1]['value'] === "boolean") {
+                        entries.get(i).setBool(value[1]['value']);
+                    } else {
+                        throw "Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' did not match expected type '" + value[1]['type'] + "'";
+                    }
+                    break;
+                case 'uint64':
+                    break;
+                case 'fixedPoint':
+                    if (typeof value[1]['value'] === "number") {
+                        entries.get(i).setFixedPoint(value[1]['value'].toString());
+                    } else {
+                        throw "Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' did not match expected type '" + value[1]['type'] + "'";
+                    }
+                    break;
+                case 'text':
+                    if (typeof value[1]['value'] === "string") {
+                        entries.get(i).setText(value[1]['value']);
+                    } else {
+                        throw "Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' did not match expected type '" + value[1]['type'] + "'";
+                    }
+                    break;
+                case 'data':
+                    break;
+            }
+        });
         entries.get(0).setKey('to');
         entries.get(1).setKey('amount');
         valuebuf.setText(this.to); // Fill the buffer with the 'to' text
