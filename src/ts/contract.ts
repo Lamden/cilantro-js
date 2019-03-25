@@ -9,25 +9,20 @@ import * as helpers from './helpers';
 import * as wallet from './wallet';
 import * as pow from './pow';
 
-var ContractTransaction = transactionSchemas.ContractTransaction;
-var TransactionContainer = transactionSchemas.TransactionContainer;
-var Metadata = transactionSchemas.MetaData;
-var ContractPayload = transactionSchemas.ContractPayload;
-var Kwargs = valueSchemas.Kwargs;
-var Value = valueSchemas.Value;
-var Map = valueSchemas.Map;
-
 export class ContractTransactionContainer {
     tx: capnp.Message;
+    payload: any;
 
     constructor() {
     }
 
     create(contractTransaction) {
-        const struct = new capnp.Message()
-        const txContainer = struct.initRoot(TransactionContainer);
+        this.payload = contractTransaction.toPackedArrayBuffer();
 
-        const txbytes = new Uint8Array(contractTransaction.toPackedArrayBuffer());
+        const struct = new capnp.Message();
+        const txContainer = struct.initRoot(transactionSchemas.TransactionContainer);
+
+        const txbytes = new Uint8Array(this.payload);
         const pl = txContainer.initPayload(txbytes.byteLength);
         pl.copyBuffer(txbytes);
 
@@ -43,6 +38,12 @@ export class ContractTransactionContainer {
         
     }
 
+    createFromBytesPacked(i) {
+        this.tx = new capnp.Message(i);
+        const tc = this.tx.getRoot(transactionSchemas.TransactionContainer);
+        this.payload = tc.getPayload().toUint8Array();
+    }
+
     toBytesPacked() {
         return this.tx.toPackedArrayBuffer();
     }
@@ -53,14 +54,14 @@ export class ContractTransactionContainer {
 
     deserializeData(i) {
         const msg = new capnp.Message(i);
-        const tc = msg.getRoot(TransactionContainer);
+        const tc = msg.getRoot(transactionSchemas.TransactionContainer);
         return tc;
     }
 }
 
 export class ContractTransaction {
     sender_sk: string;
-    sender: string;
+    sender_vk: string;
     stamps_supplied: number;
     nonce: string;
     contract_name: string;
@@ -68,35 +69,37 @@ export class ContractTransaction {
     signature: string;
     pow: string;
     tx: capnp.Message;
+    kwargs: any;
 
-    constructor(contract_name, func_name) {
-        this.contract_name = contract_name;
-        this.func_name = func_name;
+    constructor() {
     }
 
     // PSUEDO-CONSTRUCTOR
     //   kwargs is reference to a dictionary object emulating the usage of kwargs in python for unknown, dynamic
     //          keyword argument assignment
-    create(sender_sk, stamps_supplied, nonce, kwargobj) {
+    create(contract_name, func_name, sender_sk, stamps_supplied, nonce, kwargobj) {
         // Fill the class objects for later use
         // These are initialized here instead of in the constructor so we can emulate having multiple
         // constructors (as with in python @class_method)
+        this.contract_name = contract_name;
+        this.func_name = func_name;
         this.sender_sk = sender_sk;
         this.stamps_supplied = stamps_supplied;
         this.nonce = nonce;
+        this.kwargs = kwargobj;
 
         // Initialize capnp objects
         const struct = new capnp.Message();
-        const tx = struct.initRoot(ContractTransaction);
+        const tx = struct.initRoot(transactionSchemas.ContractTransaction);
         const metadata = tx.initMetadata();
         const message = new capnp.Message();
-        const payload = message.initRoot(ContractPayload);
+        const payload = message.initRoot(transactionSchemas.ContractPayload);
         const valuebuffer = new capnp.Message(); // In order to set the value we need to
                                                  // construct it as a message than deepcopy
                                                  // it over
-        const valuebuf = valuebuffer.initRoot(Value);
+        const valuebuf = valuebuffer.initRoot(valueSchemas.Value);
         const kwargs = payload.initKwargs();
-        const kwargcount = Object.keys(kwargobj).length; // Get the number of kwargs supplied via the kwarg object for
+        const kwargcount = Object.keys(this.kwargs).length; // Get the number of kwargs supplied via the kwarg object for
                                                          // the dynamic section of the transaction container
         const entries = kwargs.initEntries(kwargcount); // Set to static length of 2 for currency contract
 
@@ -111,7 +114,7 @@ export class ContractTransaction {
         payload.setStampsSupplied(stamps);
 
         // Build the non-deterministic section of the payload (kwargs)
-        Object.entries(kwargobj).forEach(function (value, i) {
+        Object.entries(this.kwargs).forEach(function (value, i) {
             // Set the key to the entry (foreach on on object will give [ [ <key>, <value> ], ... ]
             entries.get(i).setKey(value[0]);
             // Set the value based on the provided type
@@ -120,38 +123,35 @@ export class ContractTransaction {
                     throw "argument type " + value[1]["type"] + " is either unknown or unsupported by cilantro-js";
                 case 'bool':
                     if (typeof value[1]['value'] === "boolean") {
-                        entries.get(i).setBool(value[1]['value']);
+                        valuebuf.setBool(value[1]['value'])
                     } else {
                         throw "Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' did not match expected type '" + value[1]['type'] + "'";
                     }
                     break;
                 case 'uint64':
+                    if (typeof value[1]['value'] === "number") {
+                        valuebuf.setUint64(capnp.Uint64.fromNumber(value[1]['value']));
+                    } else {
+                        throw "Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' did not match expected type '" + value[1]['type'] + "'";
+                    }
                     break;
                 case 'fixedPoint':
                     if (typeof value[1]['value'] === "number") {
-                        entries.get(i).setFixedPoint(value[1]['value'].toString());
+                        valuebuf.setFixedPoint(value[1]['value'].toString());
                     } else {
                         throw "Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' did not match expected type '" + value[1]['type'] + "'";
                     }
                     break;
                 case 'text':
                     if (typeof value[1]['value'] === "string") {
-                        entries.get(i).setText(value[1]['value']);
+                        valuebuf.setText(value[1]['value']);
                     } else {
                         throw "Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' did not match expected type '" + value[1]['type'] + "'";
                     }
                     break;
-                case 'data':
-                    break;
             }
+            entries.get(i).setValue(valuebuf);
         });
-        entries.get(0).setKey('to');
-        entries.get(1).setKey('amount');
-        valuebuf.setText(this.to); // Fill the buffer with the 'to' text
-        entries.get(0).setValue(valuebuf);
-        valuebuf.setFixedPoint(this.amount.toString()); // Fill the buffer with the amount
-        entries.get(1).setValue(valuebuf);
-
         // Get the payload bytes
         const plbytes = new Uint8Array(message.toArrayBuffer());
 
@@ -176,6 +176,68 @@ export class ContractTransaction {
         return struct;
     }
 
+    // NOTE: On deserialization, we cannot extract the sender sk, only the sender
+    //       vk. This is the desired behavior.
+    createFromBytesPacked(i) {
+        this.tx = new capnp.Message(i);
+        const tx = this.tx.getRoot(transactionSchemas.ContractTransaction);
+        const metadata = tx.getMetadata();
+        // Since the stored payload is an array buffer, we need to put it into a message
+        // in order to properly deserialize it into a readable object
+        const payloadMessage = new capnp.Message(tx.getPayload().toUint8Array(), false);
+        const payload = payloadMessage.getRoot(transactionSchemas.ContractPayload);
+
+
+        this.sender_vk = payload.getSender();
+        this.stamps_supplied = payload.getStampsSupplied().toNumber();
+        this.nonce = payload.getNonce();
+        this.contract_name = payload.getContractName();
+        this.func_name = payload.getFunctionName();
+        this.signature = metadata.getSignature().toString();
+        this.pow = metadata.getProof().toString();
+
+        // Unpacking kwargs is going to be tricky
+        const kwargsEntries = payload.getKwargs().getEntries();
+        this.kwargs = {};
+
+        // Iterate over the entries in the kwargs entries map
+        kwargsEntries.forEach(function(entry) {
+            // Get the key and set it in the kwargs object
+            var key = entry.getKey();
+            this.kwargs[key] = {}
+
+            // Setup a new capnp struct to load in the underlying pointer and cast it into a
+            // Value structure
+            var entryMessage = new capnp.Message();
+            var entryData = entryMessage.initRoot(valueSchemas.Value);
+            entryMessage.setRoot(entry.getValue())
+
+            // Figure out what type (of the supported types) the current value is in order
+            // to properly pull it out back into its original form
+            var which = entryData.which();
+            var which_key = Object.keys(valueSchemas.Value_Which).find(k => valueSchemas.Value_Which[k] === which);
+            var value = null;
+            var _type = null;
+            if (which === valueSchemas.Value.BOOL) {
+                value = entryData.getBool();
+                _type = 'bool';
+            } else if (which === valueSchemas.Value.UINT64) {
+                value = entryData.getUint64();
+                _type = 'uint64';
+            } else if (which === valueSchemas.Value.FIXED_POINT) {
+                value = Number(entryData.getFixedPoint());
+                _type = 'fixedPoint';
+            } else if (which === valueSchemas.Value.TEXT) {
+                value = entryData.getText();
+                _type = 'text';
+            } else {
+                throw "cilantro-js does not support Value of type " + which_key;
+            }
+            this.kwargs[key]['value'] = value;
+            this.kwargs[key]['type'] = _type;
+        }.bind(this));
+    }
+
     toBytesPacked() {
         return this.tx.toPackedArrayBuffer();
     }
@@ -186,13 +248,13 @@ export class ContractTransaction {
 
     deserializePayload(i) {
         const msg = new capnp.Message(i);
-        const payload = msg.getRoot(ContractPayload);
+        const payload = msg.getRoot(transactionSchemas.ContractPayload);
         return payload;
     }
 
     deserializeData(i) {
         const msg = new capnp.Message(i);
-        const tx = msg.getRoot(ContractTransaction);
+        const tx = msg.getRoot(transactionSchemas.ContractTransaction);
         return tx;
     }
 }

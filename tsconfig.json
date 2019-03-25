@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es2018",
+    "moduleResolution": "node",
+    "lib": ["dom", "es2018"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "build/ts/"
+  ],
+  "exclude": [
+    "node_modules/",
+    "src/",
+    "test/"
+  ],
+  "module": "umd"
+}
