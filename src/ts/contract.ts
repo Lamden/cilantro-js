@@ -33,9 +33,6 @@ export class ContractTransactionContainer {
         txContainer.setType(l);
 
         this.tx = struct;
-
-        return struct;
-        
     }
 
     createFromBytesPacked(i) {
@@ -60,7 +57,7 @@ export class ContractTransactionContainer {
 }
 
 export class ContractTransaction {
-    sender_sk: string;
+    nonce_enabled: boolean;
     sender_vk: string;
     stamps_supplied: number;
     nonce: string;
@@ -69,29 +66,37 @@ export class ContractTransaction {
     signature: string;
     pow: string;
     tx: capnp.Message;
+    tx_data: any;
+    payload: any;
+    payload_data: capnp.Message;
     kwargs: any;
+    metadata: any;
 
-    constructor() {
+    constructor(nonce_enabled?: boolean) {
+        // TODO: come up with a deterministic way to request nonces so we do not need to do a 
+        if (nonce_enabled) {
+            throw "Requesting nonces is currently not supported in CilantroJS"
+        } else {
+            this.nonce_enabled = false;
+        }
     }
 
     // PSUEDO-CONSTRUCTOR
     //   kwargs is reference to a dictionary object emulating the usage of kwargs in python for unknown, dynamic
     //          keyword argument assignment
-    create(contract_name, func_name, sender_sk, stamps_supplied, nonce, kwargobj) {
+    create(contract_name, func_name, stamps_supplied, kwargobj) {
         // Fill the class objects for later use
         // These are initialized here instead of in the constructor so we can emulate having multiple
         // constructors (as with in python @class_method)
         this.contract_name = contract_name;
         this.func_name = func_name;
-        this.sender_sk = sender_sk;
         this.stamps_supplied = stamps_supplied;
-        this.nonce = nonce;
         this.kwargs = kwargobj;
 
         // Initialize capnp objects
         const struct = new capnp.Message();
         const tx = struct.initRoot(transactionSchemas.ContractTransaction);
-        const metadata = tx.initMetadata();
+        this.metadata = tx.initMetadata();
         const message = new capnp.Message();
         const payload = message.initRoot(transactionSchemas.ContractPayload);
         const valuebuffer = new capnp.Message(); // In order to set the value we need to
@@ -109,8 +114,6 @@ export class ContractTransaction {
         // Build the deterministic section of the payload
         payload.setContractName(this.contract_name);
         payload.setFunctionName(this.func_name);
-        payload.setNonce(this.nonce);
-        payload.setSender(wallet.get_vk(this.sender_sk));
         payload.setStampsSupplied(stamps);
 
         // Build the non-deterministic section of the payload (kwargs)
@@ -125,55 +128,79 @@ export class ContractTransaction {
                     if (typeof value[1]['value'] === "boolean") {
                         valuebuf.setBool(value[1]['value'])
                     } else {
-                        throw "Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' did not match expected type '" + value[1]['type'] + "'";
+                        throw "(case bool): Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' (type: '" + typeof value[1]['value'] + "') did not match expected type '" + value[1]['type'] + "'";
                     }
                     break;
                 case 'uint64':
                     if (typeof value[1]['value'] === "number") {
                         valuebuf.setUint64(capnp.Uint64.fromNumber(value[1]['value']));
                     } else {
-                        throw "Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' did not match expected type '" + value[1]['type'] + "'";
+                        throw "(case uint64): Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' (type: '" + typeof value[1]['value'] + "') did not match expected type '" + value[1]['type'] + "'";
                     }
                     break;
                 case 'fixedPoint':
                     if (typeof value[1]['value'] === "number") {
                         valuebuf.setFixedPoint(value[1]['value'].toString());
                     } else {
-                        throw "Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' did not match expected type '" + value[1]['type'] + "'";
+                        throw "(case fixedPoint): Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' (type: '" + typeof value[1]['value'] + "') did not match expected type '" + value[1]['type'] + "'";
+                    }
+                    break;
+                case 'time':
+                    if (value[1]['value'] instanceof Date) {
+                        valuebuf.setTime(value[1]['value'].toISOString());
+                    } else {
+                        throw "(case time): Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' (type: '" + typeof value[1]['value'] + "') did not match expected type '" + value[1]['type'] + "'";
                     }
                     break;
                 case 'text':
                     if (typeof value[1]['value'] === "string") {
                         valuebuf.setText(value[1]['value']);
                     } else {
-                        throw "Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' did not match expected type '" + value[1]['type'] + "'";
+                        throw "(case text): Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' (type: '" + typeof value[1]['value'] + "') did not match expected type '" + value[1]['type'] + "'";
                     }
                     break;
             }
             entries.get(i).setValue(valuebuf);
         });
+        // Set the payload to the completed message, this will be needed later to sign the transaction
+        this.payload_data = message;
+        this.payload = payload;
+        this.tx = struct;
+        this.tx_data = tx;
+    }
+
+    sign(sender_sk) {
+        this.sender_vk = wallet.get_vk(sender_sk);
+
+        // set the sender
+        this.payload.setSender(this.sender_vk);
+
+        // Request the nonce if nonces enabled, otherwise calculate it locally
+        if (this.nonce_enabled) {
+            throw "Requesting nonces is currently not supported in CilantroJS"
+        } else {
+            this.nonce = this.sender_vk + 'B'.repeat(64);
+        }
+        this.payload.setNonce(this.nonce);
+
         // Get the payload bytes
-        const plbytes = new Uint8Array(message.toArrayBuffer());
+        const plbytes = new Uint8Array(this.payload_data.toArrayBuffer());
 
         // Get signature
-        this.signature = wallet.sign(this.sender_sk, plbytes);
+        this.signature = wallet.sign(sender_sk, plbytes);
         const sigbuf = helpers.str2ab(this.signature);
-        const msig = metadata.initSignature(sigbuf.byteLength);
+        const msig = this.metadata.initSignature(sigbuf.byteLength);
         msig.copyBuffer(sigbuf);
 
         // Calculate POW
         this.pow = pow.find(plbytes).pow;
         const powbuf = helpers.str2ab(this.pow);
-        const mpow = metadata.initProof(powbuf.byteLength);
+        const mpow = this.metadata.initProof(powbuf.byteLength);
         mpow.copyBuffer(powbuf);
 
         // Set payload of tx -- payload binary
-        const pl = tx.initPayload(plbytes.byteLength);
+        const pl = this.tx_data.initPayload(plbytes.byteLength);
         pl.copyBuffer(plbytes);
-
-        this.tx = struct;
-
-        return struct;
     }
 
     // NOTE: On deserialization, we cannot extract the sender sk, only the sender
@@ -227,6 +254,9 @@ export class ContractTransaction {
             } else if (which === valueSchemas.Value.FIXED_POINT) {
                 value = Number(entryData.getFixedPoint());
                 _type = 'fixedPoint';
+            } else if (which === valueSchemas.Value.TIME) {
+                value = new Date(entryData.getTime());
+                _type = 'time';
             } else if (which === valueSchemas.Value.TEXT) {
                 value = entryData.getText();
                 _type = 'text';

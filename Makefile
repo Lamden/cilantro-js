@@ -25,3 +25,8 @@ test: build
 
 clean:
 	rm -rf build
+
+bundle:
+	@gulp setup
+	@gulp transpile
+	@gulp bundlejs

@@ -38,13 +38,18 @@
     "babel-eslint": "^10.0.1",
     "babelify": "^10.0.0",
     "capnpc-ts": "0.4.0",
+    "chai": "^4.2.0",
     "eslint": "^5.15.3",
+    "expect": "^24.5.0",
     "gulp": "4.0.0",
     "gulp-browserify": "0.5.1",
     "gulp-concat": "^2.6.1",
+    "gulp-include": "^2.3.1",
     "gulp-typescript": "5.0.1",
     "mocha": "6.0.2",
     "rename": "^1.0.4",
-    "tsify": "^4.0.1"
+    "should": "^13.2.3",
+    "tsify": "^4.0.1",
+    "webpack-stream": "^5.2.1"
   }
 }
