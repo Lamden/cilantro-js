@@ -20,9 +20,10 @@ ts/
 The `ts` directory contains all of the typescript files brought together into a single directory for transpiling, the `js` directory contains all the transpiled files from the `ts` directory, and the `bundle` directory contains a single `bundle.js` file to be used for web applications.
 
 ## Test
-Following a successful build, the test endpoints can be run against the generated Javascript library
+Following a successful build, the test endpoints can be run against the generated Javascript library:
 
 ```
 make test
 ```
 
+This will run the suite of unit tests against the built code (note, `make build` is a prerequisite of the tests running) to ensure its integrity. If for some reason your local tests are not passing after a successful build, please feel free to open a ticket [here](https://github.com/Lamden/cilantro-js/issues/new).
