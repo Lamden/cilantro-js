@@ -5,12 +5,14 @@ Cilantro-JS is a library which implements the underlying Cilantro protocol in ja
 ## Build
 After cloning the repository you will need to run the below commands to build the underlying typescript into usable javascript
 
-```make build
+```
+make build
 ```
 
 This will create the `build` directory in the root of `cilantro-js`. Inside this directory there are 3 sub-directories:
 
-```bundle/
+```
+bundle/
 js/
 ts/
 ```
@@ -20,6 +22,7 @@ The `ts` directory contains all of the typescript files brought together into a 
 ## Test
 Following a successful build, the test endpoints can be run against the generated Javascript library
 
-```make test
+```
+make test
 ```
 
