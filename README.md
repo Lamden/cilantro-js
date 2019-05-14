@@ -12,7 +12,8 @@ This will create the `build` directory in the root of `cilantro-js`. Inside this
 
 ```bundle/
 js/
-ts/```
+ts/
+```
 
 The `ts` directory contains all of the typescript files brought together into a single directory for transpiling, the `js` directory contains all the transpiled files from the `ts` directory, and the `bundle` directory contains a single `bundle.js` file to be used for web applications.
 
