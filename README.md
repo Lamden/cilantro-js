@@ -6,7 +6,7 @@ Cilantro-JS is a library which implements the underlying Cilantro protocol in ja
 After cloning the repository you will need to run the below commands to build the underlying typescript into usable javascript
 
 ```
-make build
+gulp setup
 ```
 
 This will create the `build` directory in the root of `cilantro-js`. Inside this directory there are 3 sub-directories:
@@ -18,6 +18,18 @@ ts/
 ```
 
 The `ts` directory contains all of the typescript files brought together into a single directory for transpiling, the `js` directory contains all the transpiled files from the `ts` directory, and the `bundle` directory contains a single `bundle.js` file to be used for web applications.
+
+```
+gulp transpile
+```
+
+This will transpile the contents of `build/ts` into like-for-like files in `build/js`.
+
+```
+gulp bundlejs
+```
+
+This will take the contents of `build/js` alongside all npm dependencies and generate a monolithic bundle under `build/bundle` for distribution as a generic javascript library.
 
 ## Test
 Following a successful build, the test endpoints can be run against the generated Javascript library:
