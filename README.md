@@ -2,6 +2,16 @@
 ## Introduction
 Cilantro-JS is a library which implements the underlying Cilantro protocol in javascript to allow for the local and secure serialization of contract transactions to be submitted to the cilantro network.
 
+## Install Dependencies
+apt install node-typescript
+apt install mocha
+
+install node and npm:
+npm v5.6.0
+node v8.10.0
+
+npm install
+
 ## Build
 After cloning the repository you will need to run the below commands to build the underlying typescript into usable javascript
 
