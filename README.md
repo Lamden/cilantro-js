@@ -4,10 +4,13 @@ Cilantro-JS is a library which implements the underlying Cilantro protocol in ja
 
 ## Install Dependencies
 apt install node-typescript
+
 apt install mocha
 
 install node and npm:
+
 npm v5.6.0
+
 node v8.10.0
 
 npm install
