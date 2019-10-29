@@ -145,13 +145,6 @@ export class ContractTransaction {
                         throw "(case fixedPoint): Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' (type: '" + typeof value[1]['value'] + "') did not match expected type '" + value[1]['type'] + "'";
                     }
                     break;
-                case 'time':
-                    if (value[1]['value'] instanceof Date) {
-                        valuebuf.setTime(value[1]['value'].toISOString());
-                    } else {
-                        throw "(case time): Value provided to key '" + value[0] + "' of '" + value[1]['value'] + "' (type: '" + typeof value[1]['value'] + "') did not match expected type '" + value[1]['type'] + "'";
-                    }
-                    break;
                 case 'text':
                     if (typeof value[1]['value'] === "string") {
                         valuebuf.setText(value[1]['value']);
