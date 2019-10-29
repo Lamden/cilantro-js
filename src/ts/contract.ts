@@ -247,9 +247,6 @@ export class ContractTransaction {
             } else if (which === valueSchemas.Value.FIXED_POINT) {
                 value = Number(entryData.getFixedPoint());
                 _type = 'fixedPoint';
-            } else if (which === valueSchemas.Value.TIME) {
-                value = new Date(entryData.getTime());
-                _type = 'time';
             } else if (which === valueSchemas.Value.TEXT) {
                 value = entryData.getText();
                 _type = 'text';
