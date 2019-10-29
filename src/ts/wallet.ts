@@ -1,5 +1,4 @@
 import * as nacl from 'tweetnacl';
-import * as assert from 'assert';
 import * as helpers from './helpers';
 
 /**
