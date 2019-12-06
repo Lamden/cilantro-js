@@ -1,3 +1,0 @@
-[submodule "src/capnp-schemas"]
-	path = src/capnp-schemas
-	url = git@github.com:Lamden/capnp-schemas.git
