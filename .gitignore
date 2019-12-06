@@ -1,4 +1,3 @@
 build/
 node_modules/
-src/capnp-schemas/
 .DS_STORE
