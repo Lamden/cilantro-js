@@ -73,12 +73,12 @@ export class TransactionBuilder {
                 //Create a value pointer to set the Key (text)
                 // ** This does not compile in Typescript but does create the correct
                 // result in javascript.  This is uncommented in the javascript implementation
-                // but commented out here so this can compile.
-                //*** UNCOMMENT  */
-                //let keyMessage = new capnp.Message().initRoot(capnp.Text);
-                //keyMessage.set(0, key)
-                //kwargsEntries.get(index).setKey(keyMessage)
-                //*** UNCOMMENT  */
+                // but commented in TS so it can compile.
+
+                let keyMessage = new capnp.Message().initRoot(capnp.Text);
+                keyMessage.set(0, key)
+                kwargsEntries.get(index).setKey(keyMessage)
+
                 //Set the assocaited Value for the kwarg entry
                 kwargsEntries.get(index).setValue(this.mapTypes(this.kwargs[key]));
             });

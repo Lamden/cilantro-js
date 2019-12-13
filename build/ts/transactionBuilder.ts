@@ -118,7 +118,7 @@ export class TransactionBuilder {
                 //Create a value pointer to set the Key (text)
                 // ** This does not compile in Typescript but does create the correct
                 // result in javascript.  This is uncommented in the javascript implementation
-                // but commented out here so this can compile.
+                // but commented in TS so it can compile.
 
                 //*** UNCOMMENT  */
                 //let keyMessage = new capnp.Message().initRoot(capnp.Text);
