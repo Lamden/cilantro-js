@@ -93,17 +93,7 @@ export class TransactionBuilder {
         return new Uint8Array(a);
     }
 
-    byteToHexString(uint8arr: Uint8Array) {
-        var hexStr = '';
-        for (var i = 0; i < uint8arr.length; i++) {
-          var hex = (uint8arr[i] & 0xff).toString(16);
-          hex = (hex.length === 1) ? '0' + hex : hex;
-          hexStr += hex;
-        }
-        return hexStr.toUpperCase();
-    }
-
-    stringToArrayBuffer(string: string) {
+    stringToArrayBuffer(string) {
         var buffer = new ArrayBuffer(string.length);
         var bufferView = new Uint8Array(buffer);
         for (var i=0, strLen=string.length; i<strLen; i++) {
