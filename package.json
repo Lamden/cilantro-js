@@ -46,7 +46,7 @@
     "gulp-concat": "^2.6.1",
     "gulp-include": "^2.3.1",
     "gulp-typescript": "5.0.1",
-    "mocha": "6.0.2",
+    "mocha": "6.2.3",
     "rename": "^1.0.4",
     "should": "^13.2.3",
     "tsify": "^4.0.1",
